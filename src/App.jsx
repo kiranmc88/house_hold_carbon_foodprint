@@ -6,6 +6,8 @@ import Calculator from './pages/Calculator';
 import Results from './pages/Results';
 import Recommendations from './pages/Recommendations';
 import Methodology from './pages/Methodology';
+import Comparison from './pages/Comparison';
+import Survey from './pages/Survey';
 import { CarbonProvider } from './context/CarbonContext';
 
 /**
@@ -30,8 +32,10 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/calculator" element={<Calculator />} />
+            <Route path="/survey" element={<Survey />} />
             <Route path="/results" element={<Results />} />
             <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/comparison" element={<Comparison />} />
             <Route path="/methodology" element={<Methodology />} />
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />

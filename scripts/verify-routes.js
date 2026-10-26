@@ -1,6 +1,6 @@
 import http from 'http';
 
-const routes = ['/', '/calculator', '/results', '/recommendations', '/methodology'];
+const routes = ['/', '/calculator', '/survey', '/results', '/comparison', '/recommendations', '/methodology'];
 
 async function checkRoute(route) {
   return new Promise((resolve) => {

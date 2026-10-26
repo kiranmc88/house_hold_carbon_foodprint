@@ -1,119 +1,115 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Lightbulb, 
-  Zap, 
   Car, 
-  Flame, 
-  Utensils, 
-  Trash2, 
+  Gauge, 
+  Wrench, 
+  Bus, 
+  Zap, 
+  Users, 
   Calculator,
   Sparkles,
   CheckCircle,
   BarChart3,
-  RotateCcw
+  GitCompare,
+  ArrowRight
 } from 'lucide-react';
 import Container from '../components/common/Container';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { useCarbon } from '../context/useCarbon';
-import { formatKgCO2e } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
 
 export default function Recommendations() {
-  const navigate = useNavigate();
-  const { results, isCalculated, resetData } = useCarbon();
+  const { results, isCalculated } = useCarbon();
 
-  const handleStartNew = () => {
-    resetData();
-    navigate('/calculator');
-  };
-
-  const recommendationPillars = [
+  const vehicleRecommendations = [
     {
-      id: 'electricity',
-      categoryKey: 'electricity',
-      title: 'Electricity & Energy Efficiency',
-      icon: Zap,
-      badgeVariant: 'amber',
-      defaultImpact: 'High Impact',
-      summary: 'Up to 30-40% reduction in electricity emissions through energy-star appliances, smart cooling, and rooftop solar adoption.',
-      potentialSavingsPct: '30-40%',
+      id: 'eco_driving',
+      title: 'Eco-Driving Techniques & Speed Management',
+      icon: Gauge,
+      badgeVariant: 'emerald',
+      defaultImpact: 'High Impact (Immediate)',
+      summary: 'Adopting smooth acceleration and maintaining steady speeds delivers immediate 10% to 15% reductions in fuel consumption without any vehicle modification.',
+      potentialSavingsPct: '10-15%',
       sampleActions: [
-        'Set AC thermostats to optimal 24°C - 26°C (saves 6% per degree)',
-        'Transition 100% of lighting fixtures to 5-star LEDs',
-        'Explore rooftop solar net-metering to offset grid consumption',
+        'Avoid rapid acceleration and harsh braking; anticipate traffic flow smoothly',
+        'Maintain highway speeds around 80-90 km/h; driving at 110+ km/h increases fuel consumption by up to 25%',
+        'Turn off the engine during idling intervals exceeding 20 seconds (e.g., long traffic lights or railway crossings)',
       ],
     },
     {
-      id: 'transport',
-      categoryKey: 'transportation',
-      title: 'Sustainable Mobility & Transit',
-      icon: Car,
+      id: 'tire_maintenance',
+      title: 'Tire Pressure & Aerodynamic Optimization',
+      icon: Wrench,
       badgeVariant: 'blue',
-      defaultImpact: 'High Impact',
-      summary: 'Transportation is often the largest single variable in household carbon profiles. Shifting commute modes delivers immediate drops.',
+      defaultImpact: 'Moderate Impact',
+      summary: 'Proper tire pressure minimizes rolling resistance, extending tire life and maintaining optimal fuel economy.',
+      potentialSavingsPct: '3-6%',
+      sampleActions: [
+        'Inspect and inflate tires to manufacturer-specified cold PSI at least twice monthly',
+        'Under-inflated tires by just 5 PSI increase fuel consumption by 2% to 3%',
+        'Remove empty rooftop cargo boxes or bike racks when not in use to eliminate aerodynamic drag',
+      ],
+    },
+    {
+      id: 'vehicle_servicing',
+      title: 'Preventative Maintenance & Engine Tuning',
+      icon: Car,
+      badgeVariant: 'amber',
+      defaultImpact: 'Moderate Impact',
+      summary: 'Regular engine diagnostics, air filter replacements, and fresh motor oil ensure complete fuel combustion with minimal emissions.',
+      potentialSavingsPct: '5-10%',
+      sampleActions: [
+        'Replace clogged engine air filters to prevent rich fuel-air mixtures and incomplete combustion',
+        'Use the manufacturer-recommended motor oil viscosity grade for lower frictional drag',
+        'Ensure wheel alignment and suspension servicing to prevent drag resistance',
+      ],
+    },
+    {
+      id: 'modal_shift',
+      title: 'Modal Shift & Mass Transit Integration',
+      icon: Bus,
+      badgeVariant: 'emerald',
+      defaultImpact: 'Very High Impact',
+      summary: 'Substituting private car trips with public buses, metro rail, or active mobility (walking/cycling) provides the highest per-kilometer emission cuts.',
+      potentialSavingsPct: '40-70%',
+      sampleActions: [
+        'Shift 1 or 2 commuting days per week to rapid transit metro or city buses',
+        'Utilize park-and-ride facilities at transit hubs for long-distance suburban trips',
+        'Adopt cycling or walking for short-distance trips under 2 km where engine cold-starts burn excess fuel',
+      ],
+    },
+    {
+      id: 'powertrain_ev',
+      title: 'Powertrain Transition & EV Adoption',
+      icon: Zap,
+      badgeVariant: 'teal',
+      defaultImpact: 'Long-Term Impact',
+      summary: 'Transitioning to battery electric vehicles (EVs) eliminates tailpipe emissions and significantly lowers operational greenhouse gas emissions.',
       potentialSavingsPct: '25-50%',
       sampleActions: [
-        'Shift 2 days/week to public metro or carpooling',
-        'Maintain correct tire pressure to optimize fuel economy by 3-5%',
-        'Evaluate Electric Vehicles (EV) for daily city commutes',
+        'Evaluate electric two-wheelers or electric cars for urban stop-and-go commuting',
+        'Charge EVs during daylight solar hours or off-peak grid hours where green tariffs exist',
+        'Consider CNG as a lower-emission transition fuel over conventional diesel',
       ],
     },
     {
-      id: 'lpg',
-      categoryKey: 'lpg',
-      title: 'Cooking Fuel & Kitchen Efficiency',
-      icon: Flame,
-      badgeVariant: 'orange',
-      defaultImpact: 'Moderate Impact',
-      summary: 'Optimize cooking gas usage with energy-efficient induction cooktops, pressure cooking, and regular burner maintenance.',
-      potentialSavingsPct: '15-25%',
-      sampleActions: [
-        'Utilize pressure cookers and covered vessels to trap heat',
-        'Adopt induction cooktops powered by clean electricity',
-        'Ensure timely servicing of gas regulators and burners',
-      ],
-    },
-    {
-      id: 'food',
-      categoryKey: 'food',
-      title: 'Dietary Shifts & Waste Reduction',
-      icon: Utensils,
-      badgeVariant: 'emerald',
+      id: 'carpooling',
+      title: 'Carpooling & Trip Consolidation',
+      icon: Users,
+      badgeVariant: 'purple',
       defaultImpact: 'High Impact',
-      summary: 'Dietary habits influence global agricultural emissions. Incorporating more plant-forward meals significantly reduces footprint.',
-      potentialSavingsPct: '20-35%',
+      summary: 'Increasing vehicle occupancy directly divides per-person emissions, while trip chaining prevents repeated cold-engine cycles.',
+      potentialSavingsPct: '30-50%',
       sampleActions: [
-        'Introduce plant-forward meals 2-3 times per week',
-        'Prioritize locally grown, seasonal produce to cut food miles',
-        'Practice meal planning to eliminate kitchen food waste',
-      ],
-    },
-    {
-      id: 'waste',
-      categoryKey: 'waste',
-      title: 'Waste Segregation & Composting',
-      icon: Trash2,
-      badgeVariant: 'slate',
-      defaultImpact: 'Moderate Impact',
-      summary: 'Prevent methane generation in landfills by separating organic waste for home or community composting.',
-      potentialSavingsPct: '50-70%',
-      sampleActions: [
-        'Segregate wet and dry waste at the source for recycling',
-        'Initiate home composting for organic kitchen scraps',
-        'Recycle paper, cardboard, and clean plastics responsibly',
+        'Form workplace carpools or utilize community ride-sharing for daily office commutes',
+        'Consolidate multiple separate shopping errands into a single chained circular route',
+        'Avoid single-occupancy driving during peak congestion gridlocks',
       ],
     },
   ];
-
-  // Dynamic ranking based on user emissions if calculated
-  const sortedPillars = [...recommendationPillars].sort((a, b) => {
-    if (!isCalculated || !results) return 0;
-    const aEmissions = results.categories[a.categoryKey]?.monthlyKg || 0;
-    const bEmissions = results.categories[b.categoryKey]?.monthlyKg || 0;
-    return bEmissions - aEmissions;
-  });
 
   return (
     <div className="py-10 sm:py-16 bg-slate-50 min-h-[calc(100vh-140px)]">
@@ -121,14 +117,13 @@ export default function Recommendations() {
         {/* Page Header */}
         <div className="max-w-3xl mb-8 space-y-3">
           <Badge variant="amber" size="sm" icon={Lightbulb}>
-            Action Plan Engine
+            Decarbonization Action Plan
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
-            Tailored Carbon Reduction Strategies
+            Vehicle Carbon Reduction Recommendations
           </h1>
           <p className="text-base text-slate-600 leading-relaxed">
-            Recommendations are dynamically prioritized based on your household's largest emission sources. 
-            Once you calculate your footprint, the system highlights the highest-leverage actions to maximize your reduction.
+            Science-backed strategies to optimize fuel efficiency, lower emissions per kilometre, and transition toward sustainable mobility.
           </p>
         </div>
 
@@ -142,12 +137,12 @@ export default function Recommendations() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-slate-900">
-                    Prioritized for Your Household Profile
+                    Active Profile: {results.vehicleLabel} ({results.fuelLabel})
                   </h3>
-                  <Badge variant="emerald" size="sm">Active</Badge>
+                  <Badge variant="emerald" size="sm">Calculated</Badge>
                 </div>
                 <p className="text-sm text-slate-600 max-w-xl leading-relaxed">
-                  Your primary driver is <strong className="text-slate-900">{results.primaryDriver.title}</strong>, contributing <strong className="text-emerald-700">{results.primaryDriver.percentage}%</strong> ({formatKgCO2e(results.primaryDriver.monthlyKg, 1)}) of your monthly emissions. Interventions below are ranked from highest to lowest potential leverage.
+                  Your vehicle generates an estimated <strong className="text-slate-900">{results.monthlyCO2Kg} kg CO₂ / month</strong> ({formatNumber(results.annualCO2Tonnes, 2)} tonnes/year) at <strong className="text-emerald-700">{results.emissionsPerKmGrams} g CO₂/km</strong>. Applying the recommendations below can reduce your travel footprint significantly.
                 </p>
               </div>
             </div>
@@ -163,14 +158,14 @@ export default function Recommendations() {
                 View Results
               </Button>
               <Button
-                to="/calculator"
+                to="/comparison"
                 variant="primary"
                 size="md"
-                icon={Calculator}
+                icon={GitCompare}
                 iconPosition="left"
-                className="w-full md:w-auto"
+                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                Recalculate
+                Compare Vehicles
               </Button>
             </div>
           </div>
@@ -182,10 +177,10 @@ export default function Recommendations() {
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-slate-900">
-                  Awaiting Footprint Data for Priority Ranking
+                  Ready to personalize your reduction potential?
                 </h3>
                 <p className="text-sm text-slate-600 max-w-xl leading-relaxed">
-                  Run the calculator to generate an automated recommendation rank order tailored to your specific household consumption numbers.
+                  Run the vehicle calculator with your monthly distance and vehicle details to calculate exact fuel savings and carbon reduction estimates.
                 </p>
               </div>
             </div>
@@ -196,84 +191,71 @@ export default function Recommendations() {
                 size="md"
                 icon={Calculator}
                 iconPosition="left"
-                className="w-full md:w-auto"
+                className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                Start Calculator
+                Launch Calculator
               </Button>
             </div>
           </div>
         )}
 
-        {/* Core Recommendations Pillars */}
+        {/* Recommendations Cards Grid */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">
-              {isCalculated ? 'Ranked Impact Interventions' : 'Recommendation Categories Overview'}
+              High-Impact Decarbonization Interventions
             </h2>
-            <span className="text-xs text-slate-500 font-medium">5 Core Impact Areas</span>
+            <span className="text-xs text-slate-500 font-medium">6 Strategic Focus Areas</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedPillars.map((pillar, idx) => {
-              const Icon = pillar.icon;
-              const categoryData = results?.categories?.[pillar.categoryKey];
-              const isTopDriver = isCalculated && results?.primaryDriver?.key === pillar.categoryKey;
-
+            {vehicleRecommendations.map((rec) => {
+              const Icon = rec.icon;
               return (
                 <Card 
-                  key={pillar.id} 
+                  key={rec.id} 
                   hover 
-                  className={`flex flex-col justify-between p-6 transition-all ${
-                    isTopDriver 
-                      ? 'border-emerald-300 ring-2 ring-emerald-500/10 shadow-sm' 
-                      : 'border-slate-200/90'
-                  }`}
+                  className="flex flex-col justify-between p-6 border-slate-200 bg-white"
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
                         <Icon className="w-5 h-5" />
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        {isTopDriver && (
-                          <Badge variant="emerald" size="sm">
-                            #1 Top Driver
-                          </Badge>
-                        )}
-                        <Badge variant="slate" size="sm">
-                          {isCalculated ? `Rank #${idx + 1}` : pillar.defaultImpact}
-                        </Badge>
-                      </div>
+                      <Badge variant="slate" size="sm">
+                        {rec.defaultImpact}
+                      </Badge>
                     </div>
 
                     <div className="space-y-1.5">
                       <h3 className="text-base font-bold text-slate-900">
-                        {pillar.title}
+                        {rec.title}
                       </h3>
-                      {categoryData && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-lg w-fit">
-                          <span>Current: {formatKgCO2e(categoryData.monthlyKg, 1)} ({categoryData.percentage}%)</span>
-                        </div>
-                      )}
-                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                        {pillar.summary}
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {rec.summary}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        <span>Key Interventions</span>
-                        <span className="text-emerald-700 font-semibold">Est. {pillar.potentialSavingsPct} cut</span>
-                      </div>
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                        Actionable Measures:
+                      </span>
                       <ul className="space-y-1.5 text-xs text-slate-700">
-                        {pillar.sampleActions.map((action, aIdx) => (
-                          <li key={aIdx} className="flex items-start gap-2">
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                        {rec.sampleActions.map((action, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                             <span>{action}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Estimated Reduction:</span>
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                      Up to {rec.potentialSavingsPct}
+                    </span>
                   </div>
                 </Card>
               );
@@ -281,35 +263,22 @@ export default function Recommendations() {
           </div>
         </div>
 
-        {/* Bottom Navigation Toolbar */}
-        <div className="mt-12 p-6 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
-          <div className="text-center sm:text-left">
-            <h4 className="text-sm font-bold text-slate-900">Need to update your consumption numbers?</h4>
-            <p className="text-xs text-slate-500">You can return to the calculator at any time to test different reduction scenarios.</p>
+        {/* Bottom CTA */}
+        <div className="mt-12 p-8 bg-slate-900 text-white rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 text-center sm:text-left">
+            <h3 className="text-lg font-bold">Want to see alternative powertrain savings?</h3>
+            <p className="text-xs text-slate-300">Compare petrol, diesel, CNG, and electric powertrains side-by-side.</p>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="ghost"
-              size="md"
-              icon={RotateCcw}
-              iconPosition="left"
-              onClick={handleStartNew}
-              className="w-full sm:w-auto"
-            >
-              Reset
-            </Button>
-            <Button
-              to="/calculator"
-              variant="primary"
-              size="md"
-              icon={Calculator}
-              iconPosition="left"
-              className="w-full sm:w-auto"
-            >
-              Back to Calculator
-            </Button>
-          </div>
+          <Button
+            to="/comparison"
+            variant="primary"
+            size="md"
+            icon={ArrowRight}
+            iconPosition="right"
+            className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold"
+          >
+            Go to Vehicle Comparison
+          </Button>
         </div>
       </Container>
     </div>

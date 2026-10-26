@@ -1,58 +1,127 @@
-import { EMISSION_FACTORS, BENCHMARKS } from '../data/emissionFactors.js';
+/**
+ * TerraTrace Drive — Vehicle Calculation Gateway
+ * 
+ * Re-exports calculation engine functions from vehicleCalculations.js
+ * while providing legacy compatibility functions for older modules.
+ */
+
+import { 
+  calculateVehicleEmissions, 
+  calculateFleetEmissions, 
+  calculateDistanceBasedEmissions,
+  calculateActualConsumptionEmissions,
+  sanitizeNumber 
+} from './vehicleCalculations.js';
+
+import { EMISSION_FACTORS, VEHICLE_BENCHMARKS } from '../data/emissionFactors.js';
+
+export {
+  calculateVehicleEmissions,
+  calculateFleetEmissions,
+  calculateDistanceBasedEmissions,
+  calculateActualConsumptionEmissions,
+  sanitizeNumber,
+};
 
 /**
- * Calculates electricity carbon emissions.
- * Formula: Net kWh * Emission Factor
- * 
- * @param {Object} data 
- * @returns {number} kg CO2e / month
+ * Legacy total footprint calculation maintained for backwards compatibility
  */
+export function calculateTotalFootprint(formData = {}) {
+  const vehicles = formData?.vehicles?.length 
+    ? formData.vehicles 
+    : [formData?.vehicle || {}];
+
+  const fleetResults = calculateFleetEmissions(vehicles) || {};
+  const members = Math.max(1, Number(formData?.household?.members || 1));
+
+  // Compute pillar breakdown
+  const elecKg = calculateElectricityEmissions(formData?.electricity);
+  const lpgKg = calculateLpgEmissions(formData?.lpg);
+  const transKg = calculateTransportationEmissions(formData?.transport);
+  const foodKg = calculateFoodEmissions(formData?.food, members);
+  const wasteKg = calculateWasteEmissions(formData?.waste);
+
+  const hasHouseholdPillars = elecKg > 0 || lpgKg > 0 || foodKg > 0 || wasteKg > 0;
+  const vehicleMonthlyKg = fleetResults.monthlyCO2Kg || 0;
+  const transportationMonthlyKg = transKg > 0 ? transKg : vehicleMonthlyKg;
+  const monthlyTotalKg = hasHouseholdPillars 
+    ? (elecKg + lpgKg + transportationMonthlyKg + foodKg + wasteKg)
+    : vehicleMonthlyKg;
+
+  const annualTotalTonnes = Number(((monthlyTotalKg * 12) / 1000).toFixed(2));
+  const perCapitaAnnualTonnes = Number((annualTotalTonnes / members).toFixed(2));
+
+  const categories = {
+    electricity: {
+      monthlyKg: elecKg,
+      percentage: monthlyTotalKg > 0 ? Number(((elecKg / monthlyTotalKg) * 100).toFixed(1)) : 0,
+      title: 'Electricity & Home Energy',
+    },
+    transportation: {
+      monthlyKg: transportationMonthlyKg,
+      percentage: monthlyTotalKg > 0 ? Number(((transportationMonthlyKg / monthlyTotalKg) * 100).toFixed(1)) : 100,
+      title: 'Vehicle Travel & Transport',
+    },
+    lpg: {
+      monthlyKg: lpgKg,
+      percentage: monthlyTotalKg > 0 ? Number(((lpgKg / monthlyTotalKg) * 100).toFixed(1)) : 0,
+      title: 'Cooking Fuel & LPG',
+    },
+    food: {
+      monthlyKg: foodKg,
+      percentage: monthlyTotalKg > 0 ? Number(((foodKg / monthlyTotalKg) * 100).toFixed(1)) : 0,
+      title: 'Food & Diet',
+    },
+    waste: {
+      monthlyKg: wasteKg,
+      percentage: monthlyTotalKg > 0 ? Number(((wasteKg / monthlyTotalKg) * 100).toFixed(1)) : 0,
+      title: 'Waste & Consumption',
+    },
+  };
+
+  const primaryKey = Object.keys(categories).reduce((top, key) => 
+    (categories[key].monthlyKg > (categories[top]?.monthlyKg || 0) ? key : top), 'transportation');
+
+  return {
+    ...fleetResults,
+    monthlyTotalKg,
+    annualTotalTonnes,
+    perCapitaAnnualTonnes,
+    primaryDriver: {
+      key: primaryKey,
+      title: primaryKey === 'transportation' && fleetResults.vehicleCount > 1
+        ? `Vehicle Fleet (${fleetResults.vehicleCount} vehicles)`
+        : categories[primaryKey]?.title || 'Vehicle Travel',
+      monthlyKg: categories[primaryKey]?.monthlyKg || monthlyTotalKg,
+      percentage: categories[primaryKey]?.percentage || 100,
+    },
+    categories,
+    benchmarks: VEHICLE_BENCHMARKS,
+    isCalculated: true,
+  };
+}
+
 export function calculateElectricityEmissions(data = {}) {
   const kwh = Math.max(0, Number(data.kwhMonthly || 0));
   const solar = Math.max(0, Number(data.solarGenerationKwh || 0));
-  const is100PercentRenewable = Boolean(data.usesRenewable);
-
-  if (is100PercentRenewable) {
-    return 0;
-  }
-
+  if (data.usesRenewable) return 0;
   const netKwh = Math.max(0, kwh - solar);
-  const factor = EMISSION_FACTORS.electricity.gridAverage;
-  return Number((netKwh * factor).toFixed(2));
+  return Number((netKwh * EMISSION_FACTORS.electricity.gridAverage).toFixed(2));
 }
 
-/**
- * Calculates LPG / Cooking fuel carbon emissions.
- * Formula: (cylinders * factor_per_cylinder) OR (SCM * factor_per_scm)
- * 
- * @param {Object} data 
- * @returns {number} kg CO2e / month
- */
 export function calculateLpgEmissions(data = {}) {
   const fuelType = data.fuelType || 'cylinder';
   let emissions = 0;
-
   if (fuelType === 'cylinder') {
     const cylinders = Math.max(0, Number(data.cylinderCount || 0));
     emissions = cylinders * EMISSION_FACTORS.lpg.perCylinder14_2kg;
   } else if (fuelType === 'png') {
     const pngScm = Math.max(0, Number(data.pngScm || 0));
     emissions = pngScm * EMISSION_FACTORS.lpg.pipedNaturalGas;
-  } else if (fuelType === 'induction') {
-    // Induction electricity is captured under electricity consumption
-    emissions = 0;
   }
-
   return Number(emissions.toFixed(2));
 }
 
-/**
- * Calculates Transportation carbon emissions.
- * Formula: Sum(distance_km * modeEmissionFactor)
- * 
- * @param {Object} data 
- * @returns {number} kg CO2e / month
- */
 export function calculateTransportationEmissions(data = {}) {
   const carKm = Math.max(0, Number(data.carDistanceKm || 0));
   const carFuelType = data.carFuelType || 'petrolCar';
@@ -70,120 +139,17 @@ export function calculateTransportationEmissions(data = {}) {
   const metroKm = Math.max(0, Number(data.metroDistanceKm || 0));
   const metroEmissions = metroKm * EMISSION_FACTORS.transportation.metroTrain;
 
-  const total = carEmissions + twoWheelerEmissions + busEmissions + metroEmissions;
-  return Number(total.toFixed(2));
+  return Number((carEmissions + twoWheelerEmissions + busEmissions + metroEmissions).toFixed(2));
 }
 
-/**
- * Calculates Food & Dietary carbon emissions.
- * Formula: (dietFactor * householdMembers)
- * 
- * @param {Object} data 
- * @param {number} householdMembers
- * @returns {number} kg CO2e / month
- */
 export function calculateFoodEmissions(data = {}, householdMembers = 1) {
   const members = Math.max(1, Number(householdMembers || 1));
   const dietType = data.dietType || 'vegetarian';
   const baseFactor = EMISSION_FACTORS.food[dietType] ?? EMISSION_FACTORS.food.vegetarian;
-
-  // Food waste impact modifier
-  let wasteModifier = 1.0;
-  if (data.wasteAwareness === 'high') {
-    wasteModifier = 0.95; // 5% reduction for zero-food-waste practices
-  } else if (data.wasteAwareness === 'low') {
-    wasteModifier = 1.05; // 5% increase for heavy food discard
-  }
-
-  const total = baseFactor * members * wasteModifier;
-  return Number(total.toFixed(2));
+  return Number((baseFactor * members).toFixed(2));
 }
 
-/**
- * Calculates Waste carbon emissions.
- * Formula: (monthlyKg * netEmissionFactor)
- * 
- * @param {Object} data 
- * @returns {number} kg CO2e / month
- */
 export function calculateWasteEmissions(data = {}) {
   const weeklyKg = Math.max(0, Number(data.wasteKgWeekly || 0));
-  const monthlyKg = weeklyKg * 4.33; // Average weeks per month
-
-  // Determine effective emission factor based on segregation and composting
-  let factor = EMISSION_FACTORS.waste.generalLandfill;
-  if (data.compostsOrganics && data.segregatesWaste) {
-    factor = 0.15; // Substantial reduction with organic diversion and recycling
-  } else if (data.segregatesWaste) {
-    factor = 0.35; // Moderate reduction from recycling
-  } else if (data.compostsOrganics) {
-    factor = 0.30;
-  }
-
-  const total = monthlyKg * factor;
-  return Number(total.toFixed(2));
-}
-
-/**
- * Aggregates all category emissions to compute total monthly and annual footprint.
- * 
- * @param {Object} formData 
- * @returns {Object} Comprehensive footprint results
- */
-export function calculateTotalFootprint(formData = {}) {
-  const members = Math.max(1, Number(formData?.household?.members || 1));
-
-  const elecMonthly = calculateElectricityEmissions(formData?.electricity || {});
-  const lpgMonthly = calculateLpgEmissions(formData?.lpg || {});
-  const transportMonthly = calculateTransportationEmissions(formData?.transport || {});
-  const foodMonthly = calculateFoodEmissions(formData?.food || {}, members);
-  const wasteMonthly = calculateWasteEmissions(formData?.waste || {});
-
-  const monthlyTotalKg = Number((elecMonthly + lpgMonthly + transportMonthly + foodMonthly + wasteMonthly).toFixed(1));
-  const annualTotalTonnes = Number(((monthlyTotalKg * 12) / 1000).toFixed(2));
-  const perCapitaAnnualTonnes = Number((annualTotalTonnes / members).toFixed(2));
-
-  // Category percentages
-  const calcPercentage = (val) => (monthlyTotalKg > 0 ? Number(((val / monthlyTotalKg) * 100).toFixed(1)) : 0);
-
-  const categories = {
-    electricity: { monthlyKg: elecMonthly, percentage: calcPercentage(elecMonthly), title: 'Household Electricity' },
-    lpg: { monthlyKg: lpgMonthly, percentage: calcPercentage(lpgMonthly), title: 'Cooking Gas (LPG/PNG)' },
-    transportation: { monthlyKg: transportMonthly, percentage: calcPercentage(transportMonthly), title: 'Mobility & Transport' },
-    food: { monthlyKg: foodMonthly, percentage: calcPercentage(foodMonthly), title: 'Diet & Nutrition' },
-    waste: { monthlyKg: wasteMonthly, percentage: calcPercentage(wasteMonthly), title: 'Solid Waste' },
-  };
-
-  // Identify highest category (primary driver)
-  let highestKey = 'electricity';
-  let highestVal = -1;
-  Object.entries(categories).forEach(([key, item]) => {
-    if (item.monthlyKg > highestVal) {
-      highestVal = item.monthlyKg;
-      highestKey = key;
-    }
-  });
-
-  // Benchmark comparisons
-  const benchmarkComparison = {
-    nationalAvgRatio: BENCHMARKS.nationalAverageAnnual ? Number((perCapitaAnnualTonnes / BENCHMARKS.nationalAverageAnnual).toFixed(2)) : null,
-    globalAvgRatio: BENCHMARKS.globalAverageAnnual ? Number((perCapitaAnnualTonnes / BENCHMARKS.globalAverageAnnual).toFixed(2)) : null,
-    targetDiff: BENCHMARKS.parisAgreementTarget ? Number((perCapitaAnnualTonnes - BENCHMARKS.parisAgreementTarget).toFixed(2)) : null,
-  };
-
-  return {
-    monthlyTotalKg,
-    annualTotalTonnes,
-    perCapitaAnnualTonnes,
-    primaryDriver: {
-      key: highestKey,
-      title: categories[highestKey].title,
-      monthlyKg: categories[highestKey].monthlyKg,
-      percentage: categories[highestKey].percentage,
-    },
-    categories,
-    benchmarkComparison,
-    benchmarks: BENCHMARKS,
-    isCalculated: true,
-  };
+  return Number((weeklyKg * 4.33 * EMISSION_FACTORS.waste.generalLandfill).toFixed(2));
 }
