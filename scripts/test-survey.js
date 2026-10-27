@@ -24,6 +24,8 @@ import {
 import {
   calculateSurveyRecordEmissions,
   calculateSurveyAnalytics,
+  validateSurveyDistance,
+  MAX_MONTHLY_DISTANCE_KM,
 } from '../src/utils/surveyCalculations.js';
 
 import {
@@ -589,6 +591,217 @@ console.log('\n--- Suite 9: RFC 4180 CSV Export & Escaping ---');
   assert(!lines[0].includes('Phone'), 'No Phone column in CSV');
   assert(!lines[0].includes('Registration'), 'No Registration/Plate column in CSV');
   assert(!lines[0].includes('Address'), 'No Address column in CSV');
+}
+
+// =============================================================================
+// SUITE 10: MONTHLY DISTANCE VALIDATION & DUAL-METHOD CALCULATIONS
+// =============================================================================
+console.log('\n--- Suite 10: Monthly Distance Input Validation & Dual-Method Calculations ---');
+{
+  // 1. Required positive distances in Method A: 100, 250, 650, 1200, 2500 km
+  const testDistances = [100, 250, 650, 1200, 2500];
+  testDistances.forEach((d) => {
+    const resA = calculateSurveyRecordEmissions({
+      vehicleType: 'car',
+      fuelType: 'petrol',
+      calculationMethod: 'distance_efficiency',
+      monthlyDistanceKm: d,
+      fuelEfficiency: 15.0,
+      requirePositiveDistance: true,
+    });
+    assert(resA.isValid === true, `Method A: Distance of ${d} km is valid`);
+    assert(resA.monthlyDistanceKm === d, `Method A: Monthly distance ${d} km preserved`);
+    const expectedFuel = d / 15.0;
+    assert(Math.abs(resA.monthlyFuelConsumed - expectedFuel) < 1e-4, `Method A: Fuel consumed matches ${d} / 15`);
+    assert(Math.abs(resA.monthlyEmissionsKg - expectedFuel * 2.3149) < 1e-3, `Method A: Emissions match for ${d} km`);
+    assert(resA.emissionsPerKmGrams > 0, `Method A: Intensity is positive for ${d} km`);
+  });
+
+  // 2. Positive decimal distances
+  const decimalRes = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: 250.5,
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(decimalRes.isValid === true, 'Method A: Decimal distance 250.5 km is valid');
+  assert(Math.abs(decimalRes.monthlyDistanceKm - 250.5) < 1e-6, 'Method A: Decimal distance preserved accurately');
+
+  // 3. Method B with distances: 100, 250, 650, 1200, 2500 km (intensity verification & double-counting prevention)
+  testDistances.forEach((d) => {
+    const resB = calculateSurveyRecordEmissions({
+      vehicleType: 'car',
+      fuelType: 'petrol',
+      calculationMethod: 'actual_consumption',
+      actualConsumption: 50.0,
+      monthlyDistanceKm: d,
+      requirePositiveDistance: true,
+    });
+    assert(resB.isValid === true, `Method B: Distance ${d} km with actual consumption is valid`);
+    assert(resB.monthlyFuelConsumed === 50.0, `Method B: Distance ${d} km does not alter fuel consumed (50 L)`);
+    assert(Math.abs(resB.monthlyEmissionsKg - 50.0 * 2.3149) < 1e-4, `Method B: Emissions are strictly derived from consumption (50 L * 2.3149)`);
+    const expectedIntensityGrams = ((50.0 * 2.3149) / d) * 1000;
+    assert(Math.abs(resB.emissionsPerKmGrams - expectedIntensityGrams) < 1e-2, `Method B: Intensity per km matches for ${d} km`);
+  });
+
+  // 4. Method B without distance (optional distance check)
+  const resBNoDist = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'diesel',
+    calculationMethod: 'actual_consumption',
+    actualConsumption: 40.0,
+    monthlyDistanceKm: '',
+    requirePositiveDistance: true,
+  });
+  assert(resBNoDist.isValid === true, 'Method B: Valid when monthly distance is omitted');
+  assert(resBNoDist.fuelEfficiency === null, 'Method B: Fuel efficiency is not required when actual consumption is provided');
+  assert(resBNoDist.emissionsPerKmGrams === 0, 'Method B: Intensity is 0 when distance is omitted');
+
+  // 5. Validation helper: validateSurveyDistance
+  // Empty, null, undefined
+  const vEmpty = validateSurveyDistance('', 'distance_efficiency');
+  assert(vEmpty.isValid === false, 'validateSurveyDistance: Empty string rejected in Method A');
+  assert(vEmpty.error === 'Please enter a valid monthly distance greater than 0 km.', 'validateSurveyDistance: Returns friendly error for empty string');
+
+  const vWhitespace = validateSurveyDistance('   ', 'distance_efficiency');
+  assert(vWhitespace.isValid === false, 'validateSurveyDistance: Whitespace string rejected in Method A');
+
+  const vNull = validateSurveyDistance(null, 'distance_efficiency');
+  assert(vNull.isValid === false, 'validateSurveyDistance: Null rejected in Method A');
+
+  const vUndef = validateSurveyDistance(undefined, 'distance_efficiency');
+  assert(vUndef.isValid === false, 'validateSurveyDistance: Undefined rejected in Method A');
+
+  // Zero
+  const vZero = validateSurveyDistance(0, 'distance_efficiency');
+  assert(vZero.isValid === false, 'validateSurveyDistance: Zero distance rejected in Method A');
+  assert(vZero.error === 'Please enter a valid monthly distance greater than 0 km.', 'validateSurveyDistance: Returns friendly message for zero distance');
+
+  // Negative
+  const vNeg = validateSurveyDistance(-100, 'distance_efficiency');
+  assert(vNeg.isValid === false, 'validateSurveyDistance: Negative distance rejected in Method A');
+  assert(vNeg.error === 'Please enter a valid monthly distance greater than 0 km.', 'validateSurveyDistance: Friendly message for negative in Method A');
+
+  const vNegB = validateSurveyDistance(-100, 'actual_consumption');
+  assert(vNegB.isValid === false, 'validateSurveyDistance: Negative distance rejected in Method B');
+  assert(vNegB.error === 'Monthly distance cannot be negative.', 'validateSurveyDistance: Descriptive message for negative in Method B');
+
+  // Non-numeric
+  const vNonNum = validateSurveyDistance('abc', 'distance_efficiency');
+  assert(vNonNum.isValid === false, 'validateSurveyDistance: Non-numeric distance rejected');
+  assert(vNonNum.error === 'Please enter a valid monthly distance greater than 0 km.', 'validateSurveyDistance: Friendly message for non-numeric');
+
+  // Unreasonably large (exceeding MAX_MONTHLY_DISTANCE_KM = 100,000 km)
+  assert(MAX_MONTHLY_DISTANCE_KM === 100000, 'MAX_MONTHLY_DISTANCE_KM is defined as 100,000 km');
+  const vLarge = validateSurveyDistance(MAX_MONTHLY_DISTANCE_KM + 1, 'distance_efficiency');
+  assert(vLarge.isValid === false, 'validateSurveyDistance: Distance exceeding 100,000 km rejected');
+  assert(vLarge.error.includes('cannot exceed 100,000 km'), 'validateSurveyDistance: Documents upper safety limit in error');
+
+  const vExtreme = validateSurveyDistance(1e8, 'distance_efficiency');
+  assert(vExtreme.isValid === false, 'validateSurveyDistance: Extreme 1e8 distance rejected');
+
+  // Method B optional distance
+  const vEmptyB = validateSurveyDistance('', 'actual_consumption');
+  assert(vEmptyB.isValid === true, 'validateSurveyDistance: Empty distance valid in Method B');
+  assert(vEmptyB.value === null, 'validateSurveyDistance: Value is null when omitted in Method B');
+
+  // 6. Direct rejection in calculateSurveyRecordEmissions with requirePositiveDistance
+  const resEmptyA = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: '',
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(resEmptyA.isValid === false, 'calculateSurveyRecordEmissions: Empty distance rejected in Method A');
+  assert(resEmptyA.error === 'Please enter a valid monthly distance greater than 0 km.', 'calculateSurveyRecordEmissions: Clear error on empty distance');
+
+  const resZeroA = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: 0,
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(resZeroA.isValid === false, 'calculateSurveyRecordEmissions: Zero distance rejected when required');
+
+  const resNegA = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: -50,
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(resNegA.isValid === false, 'calculateSurveyRecordEmissions: Negative distance rejected');
+
+  const resNonNumA = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: 'invalid_km',
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(resNonNumA.isValid === false, 'calculateSurveyRecordEmissions: Non-numeric distance rejected');
+
+  const resLargeA = calculateSurveyRecordEmissions({
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    calculationMethod: 'distance_efficiency',
+    monthlyDistanceKm: 150000,
+    fuelEfficiency: 15.0,
+    requirePositiveDistance: true,
+  });
+  assert(resLargeA.isValid === false, 'calculateSurveyRecordEmissions: Unreasonably large distance rejected');
+  assert(resLargeA.error.includes('cannot exceed 100,000 km'), 'calculateSurveyRecordEmissions: Documents limit in message');
+
+  // 7. Storage persistence: rejects invalid submissions
+  const invalidRecord = {
+    participantCategory: 'student',
+    vehicleType: 'car',
+    fuelType: 'petrol',
+    monthlyDistanceKm: -50,
+    calculationMethod: 'distance_efficiency',
+    isValid: false,
+  };
+  const countBefore = getActualSurveyRecords().length;
+  saveActualSurveyRecord(invalidRecord);
+  const countAfter = getActualSurveyRecords().length;
+  assert(countBefore === countAfter, 'Storage: Invalid survey submission is not saved to storage');
+
+  // 8. Analytics isolation: does not count invalid submissions
+  const sampleWithInvalid = [
+    {
+      id: 'val1',
+      participantCategory: 'student',
+      vehicleType: 'car',
+      fuelType: 'petrol',
+      monthlyDistanceKm: 500,
+      monthlyEmissionsKg: 77.16,
+      calculationMethod: 'distance_efficiency',
+      isValid: true,
+      consentGiven: true,
+    },
+    {
+      id: 'inval1',
+      participantCategory: 'student',
+      vehicleType: 'car',
+      fuelType: 'petrol',
+      monthlyDistanceKm: 0,
+      monthlyEmissionsKg: 0,
+      calculationMethod: 'distance_efficiency',
+      isValid: false,
+      consentGiven: true,
+    },
+  ];
+  const analyticsResult = calculateSurveyAnalytics(sampleWithInvalid);
+  assert(analyticsResult.sampleSize === 1, 'Analytics: Invalid submission excluded from sampleSize');
+  assert(analyticsResult.totalDistanceKm === 500, 'Analytics: Total distance only counts valid submission (500 km)');
 }
 
 // =============================================================================

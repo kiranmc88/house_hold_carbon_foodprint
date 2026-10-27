@@ -11,7 +11,7 @@
  * 4. Local-only Boundary: Explicit disclosure that data resides exclusively in the client's current browser.
  */
 
-import { calculateSurveyRecordEmissions } from './surveyCalculations.js';
+import { calculateSurveyRecordEmissions, validateSurveyDistance } from './surveyCalculations.js';
 
 export const SURVEY_STORAGE_KEYS = {
   ACTUAL_RECORDS: 'terratrace_vehicle_survey_actual',
@@ -49,6 +49,19 @@ export function getActualSurveyRecords() {
  * @returns {Array<Object>} Updated list of survey records
  */
 export function saveActualSurveyRecord(record) {
+  if (!record || record.isValid === false) {
+    console.warn('Attempted to save an invalid survey record; rejected.');
+    return getActualSurveyRecords();
+  }
+
+  if (record.monthlyDistanceKm !== undefined && record.monthlyDistanceKm !== null) {
+    const distCheck = validateSurveyDistance(record.monthlyDistanceKm, record.calculationMethod);
+    if (!distCheck.isValid) {
+      console.warn('Attempted to save survey record with invalid distance; rejected:', distCheck.error);
+      return getActualSurveyRecords();
+    }
+  }
+
   try {
     const current = getActualSurveyRecords();
     const validatedRecord = sanitizeRecordForStorage({
@@ -342,14 +355,21 @@ export function setSurveyViewMode(mode) {
  * Validation predicate for stored record shape
  */
 function isValidRecordShape(r) {
-  return (
-    r &&
-    typeof r === 'object' &&
-    typeof r.vehicleType === 'string' &&
-    typeof r.fuelType === 'string' &&
-    Number.isFinite(Number(r.monthlyEmissionsKg)) &&
-    r.isValid !== false
-  );
+  if (
+    !r ||
+    typeof r !== 'object' ||
+    typeof r.vehicleType !== 'string' ||
+    typeof r.fuelType !== 'string' ||
+    !Number.isFinite(Number(r.monthlyEmissionsKg)) ||
+    r.isValid === false
+  ) {
+    return false;
+  }
+  if (r.monthlyDistanceKm !== undefined && r.monthlyDistanceKm !== null) {
+    const dist = Number(r.monthlyDistanceKm);
+    if (!Number.isFinite(dist) || dist < 0) return false;
+  }
+  return true;
 }
 
 /**

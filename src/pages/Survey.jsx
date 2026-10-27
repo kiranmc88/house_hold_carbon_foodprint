@@ -41,6 +41,8 @@ import {
 import {
   calculateSurveyRecordEmissions,
   calculateSurveyAnalytics,
+  validateSurveyDistance,
+  MAX_MONTHLY_DISTANCE_KM,
 } from '../utils/surveyCalculations';
 
 import {
@@ -69,6 +71,9 @@ export default function Survey() {
 
   // Feedback notifications
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: '' }
+
+  // Field interaction tracking for distance
+  const [distanceTouched, setDistanceTouched] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -109,6 +114,16 @@ export default function Survey() {
     ? getSurveyEmissionFactor(formData.vehicleType, formData.fuelType) 
     : null;
 
+  // Monthly distance validation
+  const isMethodA = formData.calculationMethod === 'distance_efficiency';
+  const distanceValidation = useMemo(() => {
+    return validateSurveyDistance(formData.monthlyDistanceKm, formData.calculationMethod);
+  }, [formData.monthlyDistanceKm, formData.calculationMethod]);
+
+  const distanceError = (!distanceValidation.isValid && distanceTouched) 
+    ? distanceValidation.error 
+    : '';
+
   // Real-time live calculation for the active form inputs
   const liveCalculation = useMemo(() => {
     if (!isCombinationSupported) {
@@ -117,13 +132,22 @@ export default function Survey() {
         error: unsupportedReason,
       };
     }
+
+    if (!distanceValidation.isValid) {
+      return {
+        isValid: false,
+        error: distanceValidation.error,
+      };
+    }
+
     return calculateSurveyRecordEmissions({
       ...formData,
-      monthlyDistanceKm: Number(formData.monthlyDistanceKm) || 0,
+      monthlyDistanceKm: distanceValidation.value !== null ? distanceValidation.value : 0,
       fuelEfficiency: Number(formData.fuelEfficiency) || 0,
       actualConsumption: Number(formData.actualConsumption) || 0,
+      requirePositiveDistance: isMethodA,
     });
-  }, [formData, isCombinationSupported, unsupportedReason]);
+  }, [formData, isCombinationSupported, unsupportedReason, distanceValidation, isMethodA]);
 
   // Auto-fill monthly distance from daily distance * days used
   const handleAutoEstimateDistance = () => {
@@ -135,6 +159,7 @@ export default function Survey() {
         ...prev,
         monthlyDistanceKm: estimated,
       }));
+      setDistanceTouched(true);
       setFeedback({
         type: 'success',
         message: `Monthly distance auto-calculated as ${estimated} km (${daily} km/day × ${days} days/month).`,
@@ -177,6 +202,15 @@ export default function Survey() {
   // Handle Form Submission
   const handleSubmitSurvey = (e) => {
     e.preventDefault();
+    setDistanceTouched(true);
+
+    if (!distanceValidation.isValid) {
+      setFeedback({
+        type: 'error',
+        message: distanceValidation.error || 'Please enter a valid monthly distance greater than 0 km.',
+      });
+      return;
+    }
 
     if (!formData.consentGiven) {
       setFeedback({
@@ -203,10 +237,11 @@ export default function Survey() {
     }
 
     // Build the record
+    const validDistanceKm = distanceValidation.value !== null ? distanceValidation.value : 0;
     const newRecord = {
       ...formData,
       ...liveCalculation,
-      monthlyDistanceKm: Number(formData.monthlyDistanceKm) || 0,
+      monthlyDistanceKm: validDistanceKm,
       dailyDistanceKm: formData.dailyDistanceKm ? Number(formData.dailyDistanceKm) : null,
       daysUsedPerMonth: formData.daysUsedPerMonth ? Number(formData.daysUsedPerMonth) : null,
       submittedAt: new Date().toISOString(),
@@ -236,6 +271,7 @@ export default function Survey() {
       actualConsumption: '',
       consentGiven: false,
     }));
+    setDistanceTouched(false);
 
     // Auto-scroll to feedback
     window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -471,7 +507,7 @@ export default function Survey() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left 8 Cols: Form Container */}
             <div className="lg:col-span-8">
-              <form onSubmit={handleSubmitSurvey} className="space-y-6">
+              <form noValidate onSubmit={handleSubmitSurvey} className="space-y-6">
                 {/* Section 1: Participant Identity (Anonymous) */}
                 <Card className="p-6 bg-white border-slate-200 space-y-4 shadow-xs">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -698,19 +734,45 @@ export default function Survey() {
                     <div className="space-y-1.5">
                       <label htmlFor="monthlyDistanceKm" className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                         <span>Monthly Distance</span>
-                        <span className="text-slate-500 font-normal lowercase">kilometres</span>
+                        <span className="text-slate-500 font-semibold lowercase">kilometres (km)</span>
                       </label>
-                      <input
-                        id="monthlyDistanceKm"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={formData.monthlyDistanceKm}
-                        onChange={(e) => setFormData({ ...formData, monthlyDistanceKm: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                        placeholder="e.g. 600"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          id="monthlyDistanceKm"
+                          type="number"
+                          step="any"
+                          min={isMethodA ? "0.01" : "0"}
+                          max={MAX_MONTHLY_DISTANCE_KM}
+                          value={formData.monthlyDistanceKm}
+                          onChange={(e) => {
+                            setDistanceTouched(true);
+                            setFormData((prev) => ({ ...prev, monthlyDistanceKm: e.target.value }));
+                          }}
+                          onBlur={() => setDistanceTouched(true)}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-sm text-slate-900 focus:outline-none transition-all pr-12 ${
+                            distanceError
+                              ? 'border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20'
+                              : 'border-slate-300 focus:ring-2 focus:ring-emerald-500'
+                          }`}
+                          placeholder="e.g. 600"
+                          aria-invalid={distanceError ? 'true' : 'false'}
+                          aria-describedby="monthlyDistance-desc monthlyDistance-error"
+                          required={isMethodA}
+                        />
+                        <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-slate-400 pointer-events-none">
+                          km
+                        </span>
+                      </div>
+                      {distanceError && (
+                        <p id="monthlyDistance-error" className="text-xs text-rose-600 font-medium flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{distanceError}</span>
+                        </p>
+                      )}
+                      <p id="monthlyDistance-desc" className="text-[11px] text-slate-500 mt-1">
+                        Accepts positive integer or decimal distances in kilometres (km) up to {MAX_MONTHLY_DISTANCE_KM.toLocaleString()} km/month (e.g. 100, 250, 650, 1200, 2500 km).
+                        {!isMethodA && ' (Optional reference for intensity calculation in Method B)'}
+                      </p>
                     </div>
 
                     {/* Conditional Input based on Method */}

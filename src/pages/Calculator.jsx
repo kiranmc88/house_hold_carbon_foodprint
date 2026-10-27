@@ -332,7 +332,7 @@ export default function Calculator() {
           </div>
         )}
 
-        <form onSubmit={handleCalculate} className="space-y-8">
+        <form noValidate onSubmit={handleCalculate} className="space-y-8">
           {/* ========================================================================= */}
           {/* SECTION 1: VEHICLE DETAILS */}
           {/* ========================================================================= */}
@@ -491,7 +491,7 @@ export default function Calculator() {
                     id="distance-step1"
                     type="number"
                     min="1"
-                    step="10"
+                    step="any"
                     value={activeVehicle.monthlyDistanceKm || ''}
                     onChange={(e) => {
                       const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
@@ -623,7 +623,7 @@ export default function Calculator() {
                           id="distance-method-a"
                           type="number"
                           min="1"
-                          step="10"
+                          step="any"
                           value={activeVehicle.monthlyDistanceKm || ''}
                           onChange={(e) => {
                             const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
@@ -815,7 +815,7 @@ export default function Calculator() {
                           id="distance-method-b"
                           type="number"
                           min="0"
-                          step="10"
+                          step="any"
                           value={activeVehicle.monthlyDistanceKm || ''}
                           onChange={(e) => {
                             const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));

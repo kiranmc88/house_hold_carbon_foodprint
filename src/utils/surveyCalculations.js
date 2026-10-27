@@ -21,6 +21,70 @@ import {
 import { sanitizeNumber } from './vehicleCalculations.js';
 
 /**
+ * Documented upper safety limit for monthly distance (in km).
+ * 100,000 km/month corresponds to ~3,333 km/day, which exceeds realistic single-vehicle usage
+ * while preventing numerical overflow, infinite intensity loops, or malformed inputs.
+ */
+export const MAX_MONTHLY_DISTANCE_KM = 100000;
+
+/**
+ * Validate a user-entered monthly distance for the vehicle usage survey.
+ * 
+ * Rules:
+ * - Accepts any valid positive integer or decimal distance (e.g. 100, 250, 650, 1200, 2500 km or decimals).
+ * - Does not restrict the input to predefined options or dropdown values.
+ * - In Method A (Distance & Efficiency): distance is required to be > 0 and <= MAX_MONTHLY_DISTANCE_KM.
+ * - In Method B (Actual Consumption): distance is optional (used for intensity per km).
+ *   If supplied, it must be >= 0 and <= MAX_MONTHLY_DISTANCE_KM.
+ * - Rejects empty, non-numeric, zero (when required), negative, and unreasonably large inputs.
+ * 
+ * @param {any} val - Raw distance input
+ * @param {string} calculationMethod - 'distance_efficiency' | 'actual_consumption'
+ * @param {boolean|null} isRequired - Force required status (defaults to true for Method A, false for Method B)
+ * @returns {{ isValid: boolean, error: string|null, value: number|null }}
+ */
+export function validateSurveyDistance(val, calculationMethod = 'distance_efficiency', isRequired = null) {
+  const method = calculationMethod === 'actual_consumption' ? 'actual_consumption' : 'distance_efficiency';
+  const required = isRequired !== null ? Boolean(isRequired) : (method === 'distance_efficiency');
+
+  // Check empty / null / undefined / whitespace
+  if (val === '' || val === null || val === undefined) {
+    if (required) {
+      return { isValid: false, error: 'Please enter a valid monthly distance greater than 0 km.', value: null };
+    }
+    return { isValid: true, error: null, value: null };
+  }
+
+  if (typeof val === 'string' && val.trim() === '') {
+    if (required) {
+      return { isValid: false, error: 'Please enter a valid monthly distance greater than 0 km.', value: null };
+    }
+    return { isValid: true, error: null, value: null };
+  }
+
+  const num = Number(val);
+  if (!Number.isFinite(num) || isNaN(num)) {
+    return { isValid: false, error: 'Please enter a valid monthly distance greater than 0 km.', value: null };
+  }
+
+  if (required) {
+    if (num <= 0) {
+      return { isValid: false, error: 'Please enter a valid monthly distance greater than 0 km.', value: null };
+    }
+  } else {
+    if (num < 0) {
+      return { isValid: false, error: 'Monthly distance cannot be negative.', value: null };
+    }
+  }
+
+  if (num > MAX_MONTHLY_DISTANCE_KM) {
+    return { isValid: false, error: `Monthly distance cannot exceed ${MAX_MONTHLY_DISTANCE_KM.toLocaleString()} km.`, value: null };
+  }
+
+  return { isValid: true, error: null, value: num };
+}
+
+/**
  * Execute calculation for an individual survey response.
  * 
  * Supports:
@@ -77,13 +141,41 @@ export function calculateSurveyRecordEmissions(input = {}) {
     };
   }
 
+  // 2. Validate distance when required
+  const shouldValidateDistance = input.requirePositiveDistance === true;
+  if (shouldValidateDistance) {
+    const distValidation = validateSurveyDistance(
+      input.monthlyDistanceKm,
+      calculationMethod,
+      calculationMethod === 'distance_efficiency'
+    );
+    if (!distValidation.isValid) {
+      return {
+        isValid: false,
+        isSupported: true,
+        error: distValidation.error,
+        vehicleType: normVeh,
+        fuelType: normFuel,
+        calculationMethod,
+        monthlyEmissionsKg: 0,
+        yearlyEmissionsKg: 0,
+        yearlyEmissionsTonnes: 0,
+        monthlyFuelConsumed: 0,
+        emissionsPerKmGrams: 0,
+        emissionsPerKm: 0,
+        factorApplied: factor,
+        scope: factor.scope,
+      };
+    }
+  }
+
   // Sanitize distance safely (optional or required depending on method)
-  const distanceKm = sanitizeNumber(input.monthlyDistanceKm, 0, 0, 1e7);
+  const distanceKm = sanitizeNumber(input.monthlyDistanceKm, 0, 0, MAX_MONTHLY_DISTANCE_KM);
   let fuelConsumed = 0;
   let monthlyEmissionsKg = 0;
   let sanitizedEfficiency = null;
 
-  // 2. Execute calculation according to selected method
+  // 3. Execute calculation according to selected method
   if (calculationMethod === 'actual_consumption') {
     // METHOD B: Direct Actual Fuel or Electricity Consumption
     // Efficiency is NOT required
@@ -190,8 +282,17 @@ export function calculateSurveyAnalytics(records = []) {
     return createEmptyAnalytics();
   }
 
-  // Filter only valid, consented responses
-  const validRecords = records.filter((r) => r && r.isValid !== false && r.consentGiven !== false);
+  // Filter only valid, consented responses with verified valid distance
+  const validRecords = records.filter((r) => {
+    if (!r || r.isValid === false || r.consentGiven === false) return false;
+    const dist = Number(r.monthlyDistanceKm);
+    if (r.calculationMethod === 'actual_consumption') {
+      if (Number.isFinite(dist) && (dist < 0 || dist > MAX_MONTHLY_DISTANCE_KM)) return false;
+    } else {
+      if (!Number.isFinite(dist) || dist <= 0 || dist > MAX_MONTHLY_DISTANCE_KM) return false;
+    }
+    return true;
+  });
   const sampleSize = validRecords.length;
 
   if (sampleSize === 0) {
