@@ -92,6 +92,11 @@ export default function Footer() {
                   Calculation Methodology
                 </Link>
               </li>
+              <li>
+                <Link to="/user-manual" className="hover:text-emerald-400 transition-colors text-emerald-400/90 font-medium">
+                  User Manual & Help Center
+                </Link>
+              </li>
             </ul>
           </div>
 

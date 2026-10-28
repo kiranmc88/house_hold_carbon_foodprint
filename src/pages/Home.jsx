@@ -12,7 +12,8 @@ import {
   ShieldCheck, 
   GitCompare,
   Gauge,
-  ClipboardList
+  ClipboardList,
+  BookOpen
 } from 'lucide-react';
 import Container from '../components/common/Container';
 import Button from '../components/common/Button';
@@ -255,13 +256,23 @@ export default function Home() {
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>Adheres to IPCC Mobile Combustion Guidelines, UK DEFRA, and CEA India Power Sector Baseline.</span>
               </div>
-              <Link
-                to="/methodology"
-                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 group"
-              >
-                <span>Read detailed methodology</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+                <Link
+                  to="/methodology"
+                  className="text-emerald-700 hover:text-emerald-800 flex items-center gap-1 group"
+                >
+                  <span>Read detailed methodology</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/user-manual"
+                  className="text-slate-600 hover:text-emerald-700 flex items-center gap-1 group"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>User Manual & Guide</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </div>
             </div>
           </div>
         </Container>

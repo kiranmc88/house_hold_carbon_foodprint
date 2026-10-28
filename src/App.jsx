@@ -8,6 +8,7 @@ import Recommendations from './pages/Recommendations';
 import Methodology from './pages/Methodology';
 import Comparison from './pages/Comparison';
 import Survey from './pages/Survey';
+import UserManual from './pages/UserManual';
 import { CarbonProvider } from './context/CarbonContext';
 
 /**
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/comparison" element={<Comparison />} />
             <Route path="/methodology" element={<Methodology />} />
+            <Route path="/user-manual" element={<UserManual />} />
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

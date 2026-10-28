@@ -11,7 +11,8 @@ import {
   ChevronRight,
   GitCompare,
   Gauge,
-  ClipboardList
+  ClipboardList,
+  HelpCircle
 } from 'lucide-react';
 import Container from '../common/Container';
 import Button from '../common/Button';
@@ -28,6 +29,7 @@ export default function Navbar() {
     { name: 'Vehicle Comparison', path: '/comparison', icon: GitCompare },
     { name: 'Recommendations', path: '/recommendations', icon: Lightbulb },
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
+    { name: 'User Manual', path: '/user-manual', icon: HelpCircle },
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -57,7 +59,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -65,14 +67,14 @@ export default function Navbar() {
                   key={link.path}
                   to={link.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    `flex items-center gap-1 xl:gap-1.5 px-2 xl:px-2.5 py-1.5 xl:py-2 text-xs xl:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                       isActive
                         ? 'text-emerald-700 bg-emerald-50/80 font-semibold'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 opacity-80" />
+                  <Icon className="w-3.5 h-3.5 xl:w-4 xl:h-4 opacity-80 shrink-0" />
                   <span>{link.name}</span>
                 </NavLink>
               );
