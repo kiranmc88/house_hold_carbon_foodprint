@@ -22,14 +22,14 @@ export default function Navbar() {
   const location = useLocation();
 
   const navLinks = [
-    { name: 'Home', path: '/', icon: Gauge },
-    { name: 'Vehicle Calculator', path: '/calculator', icon: Calculator },
-    { name: 'Vehicle Usage Survey', path: '/survey', icon: ClipboardList },
-    { name: 'Results Dashboard', path: '/results', icon: BarChart3 },
-    { name: 'Vehicle Comparison', path: '/comparison', icon: GitCompare },
-    { name: 'Recommendations', path: '/recommendations', icon: Lightbulb },
-    { name: 'Methodology', path: '/methodology', icon: BookOpen },
-    { name: 'User Manual', path: '/user-manual', icon: HelpCircle },
+    { name: 'Home', shortName: 'Home', path: '/', icon: Gauge },
+    { name: 'Vehicle Calculator', shortName: 'Calculator', path: '/calculator', icon: Calculator },
+    { name: 'Vehicle Usage Survey', shortName: 'Survey', path: '/survey', icon: ClipboardList },
+    { name: 'Results Dashboard', shortName: 'Results', path: '/results', icon: BarChart3 },
+    { name: 'Vehicle Comparison', shortName: 'Comparison', path: '/comparison', icon: GitCompare },
+    { name: 'Recommendations', shortName: 'Tips', path: '/recommendations', icon: Lightbulb },
+    { name: 'Methodology', shortName: 'Methodology', path: '/methodology', icon: BookOpen },
+    { name: 'User Manual', shortName: 'Manual', path: '/user-manual', icon: HelpCircle },
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -42,7 +42,7 @@ export default function Navbar() {
           <Link
             to="/"
             onClick={closeMobileMenu}
-            className="flex items-center gap-2.5 group focus:outline-none"
+            className="flex items-center gap-2.5 group focus:outline-none shrink-0"
             aria-label="TerraTrace Drive Home"
           >
             <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs group-hover:bg-emerald-700 transition-colors">
@@ -59,7 +59,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5">
+          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 shrink min-w-0">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -75,7 +75,8 @@ export default function Navbar() {
                   }
                 >
                   <Icon className="w-3.5 h-3.5 xl:w-4 xl:h-4 opacity-80 shrink-0" />
-                  <span>{link.name}</span>
+                  <span className="hidden 2xl:inline">{link.name}</span>
+                  <span className="2xl:hidden">{link.shortName || link.name}</span>
                 </NavLink>
               );
             })}

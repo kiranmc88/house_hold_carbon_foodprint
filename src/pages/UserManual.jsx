@@ -32,13 +32,46 @@ import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 
+// Sections definition for Table of Contents and Navigation
+const manualSections = [
+  { id: 'section-1', shortTitle: '1. Overview', title: 'Section 1: Project Overview & Academic Mission', icon: Compass, keywords: 'overview purpose environmental studies activity-based learning abl capabilities' },
+  { id: 'section-2', shortTitle: '2. Getting Started', title: 'Section 2: Getting Started & Navigation', icon: Compass, keywords: 'getting started navigation preparation odometer fuel economy' },
+  { id: 'section-3', shortTitle: '3. Home Page', title: 'Section 3: Home Page Walkthrough', icon: HomeIcon, keywords: 'homepage home features three-tier calculate understand reduce' },
+  { id: 'section-4', shortTitle: '4. Calculator', title: 'Section 4: Vehicle Carbon Calculator & Formulas', icon: Calculator, keywords: 'calculator method a method b formula distance efficiency 600 km 15 km/l 2.3149 worked petrol example ev electric validation' },
+  { id: 'section-5', shortTitle: '5. Results', title: 'Section 5: Results Dashboard & Fleet Breakdown', icon: BarChart3, keywords: 'results monthly co2 annual tonnes fuel consumed intensity multi-vehicle fleet breakdown' },
+  { id: 'section-6', shortTitle: '6. Comparison', title: 'Section 6: Vehicle Powertrain Comparison Page', icon: GitCompare, keywords: 'comparison powertrain baseline petrol car diesel cng electric scooter bus slider 5000 km' },
+  { id: 'section-7', shortTitle: '7. Survey Form', title: 'Section 7: Vehicle Usage Survey (Field Study)', icon: ClipboardList, keywords: 'survey form participant category vehicle age commute distance calculator consent live preview unsupported combinations' },
+  { id: 'section-8', shortTitle: '8. Survey Dashboard', title: 'Section 8: Survey Analytics Dashboard & KPIs', icon: BarChart3, keywords: 'dashboard analytics kpi sample size n avg monthly distance avg emissions scope 1 scope 2 vehicle distribution fuel distribution cross-tabulation log csv export demo benchmark' },
+  { id: 'section-9', shortTitle: '9. Recommendations', title: 'Section 9: Decarbonization Recommendations', icon: Lightbulb, keywords: 'recommendations eco-driving tire pressure maintenance transit ev switching carpooling' },
+  { id: 'section-10', shortTitle: '10. Methodology', title: 'Section 10: Scientific Methodology & Emission Factors', icon: BookOpen, keywords: 'methodology emission factors ipcc defra cea india baseline 2.3149 2.6878 2.7500 0.8200 scope 1 scope 2 scope 3 lifecycle operational double-counting' },
+  { id: 'section-11', shortTitle: '11. Privacy & Storage', title: 'Section 11: Privacy, Local Storage & Data Handling', icon: ShieldCheck, keywords: 'privacy localstorage terratrace_vehicle_survey_actual terratrace_vehicle_survey_demo cross-device synchronization pii cache' },
+  { id: 'section-12', shortTitle: '12. Troubleshooting', title: 'Section 12: Troubleshooting Guide & FAQ', icon: HelpCircle, keywords: 'troubleshooting faq distance validation negative values unsupported combinations empty results csv export sync tailpipe annualization' },
+  { id: 'section-routes', shortTitle: 'Route Index', title: 'Application Route & Dashboard Reference Directory', icon: Layers, keywords: 'routes / /calculator /results /comparison /survey /recommendations /methodology /user-manual controls outputs limitations' },
+];
+
 export default function UserManual() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState('section-1');
+  const [mobileTocOpen, setMobileTocOpen] = useState(false);
   const [expandedFaqs, setExpandedFaqs] = useState({
     faq_1: true, // open first by default
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const filteredSections = manualSections.filter((sec) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      sec.title.toLowerCase().includes(q) ||
+      sec.keywords.toLowerCase().includes(q) ||
+      sec.shortTitle.toLowerCase().includes(q)
+    );
+  });
+
+  const isSectionVisible = (id) => {
+    if (!searchQuery.trim()) return true;
+    return filteredSections.some((s) => s.id === id);
+  };
 
   // Monitor scroll for "Back to top" button
   useEffect(() => {
@@ -48,6 +81,24 @@ export default function UserManual() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Update active section based on scroll position
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (visible) {
+          setActiveSection(visible.target.id);
+        }
+      },
+      { rootMargin: '-90px 0px -60% 0px', threshold: 0 }
+    );
+
+    const sectionElements = document.querySelectorAll('section[id^="section-"]');
+    sectionElements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [filteredSections]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -70,38 +121,6 @@ export default function UserManual() {
       all[`faq_${i}`] = expand;
     }
     setExpandedFaqs(all);
-  };
-
-  // Sections definition for Table of Contents and Navigation
-  const manualSections = [
-    { id: 'section-1', shortTitle: '1. Overview', title: 'Section 1: Project Overview & Academic Mission', icon: Compass, keywords: 'overview purpose environmental studies activity-based learning abl capabilities' },
-    { id: 'section-2', shortTitle: '2. Getting Started', title: 'Section 2: Getting Started & Navigation', icon: Compass, keywords: 'getting started navigation preparation odometer fuel economy' },
-    { id: 'section-3', shortTitle: '3. Home Page', title: 'Section 3: Home Page Walkthrough', icon: HomeIcon, keywords: 'homepage home features three-tier calculate understand reduce' },
-    { id: 'section-4', shortTitle: '4. Calculator', title: 'Section 4: Vehicle Carbon Calculator & Formulas', icon: Calculator, keywords: 'calculator method a method b formula distance efficiency 600 km 15 km/l 2.3149 worked petrol example ev electric validation' },
-    { id: 'section-5', shortTitle: '5. Results', title: 'Section 5: Results Dashboard & Fleet Breakdown', icon: BarChart3, keywords: 'results monthly co2 annual tonnes fuel consumed intensity multi-vehicle fleet breakdown' },
-    { id: 'section-6', shortTitle: '6. Comparison', title: 'Section 6: Vehicle Powertrain Comparison Page', icon: GitCompare, keywords: 'comparison powertrain baseline petrol car diesel cng electric scooter bus slider 5000 km' },
-    { id: 'section-7', shortTitle: '7. Survey Form', title: 'Section 7: Vehicle Usage Survey (Field Study)', icon: ClipboardList, keywords: 'survey form participant category vehicle age commute distance calculator consent live preview unsupported combinations' },
-    { id: 'section-8', shortTitle: '8. Survey Dashboard', title: 'Section 8: Survey Analytics Dashboard & KPIs', icon: BarChart3, keywords: 'dashboard analytics kpi sample size n avg monthly distance avg emissions scope 1 scope 2 vehicle distribution fuel distribution cross-tabulation log csv export demo benchmark' },
-    { id: 'section-9', shortTitle: '9. Recommendations', title: 'Section 9: Decarbonization Recommendations', icon: Lightbulb, keywords: 'recommendations eco-driving tire pressure maintenance transit ev switching carpooling' },
-    { id: 'section-10', shortTitle: '10. Methodology', title: 'Section 10: Scientific Methodology & Emission Factors', icon: BookOpen, keywords: 'methodology emission factors ipcc defra cea india baseline 2.3149 2.6878 2.7500 0.8200 scope 1 scope 2 scope 3 lifecycle operational double-counting' },
-    { id: 'section-11', shortTitle: '11. Privacy & Storage', title: 'Section 11: Privacy, Local Storage & Data Handling', icon: ShieldCheck, keywords: 'privacy localstorage terratrace_vehicle_survey_actual terratrace_vehicle_survey_demo cross-device synchronization pii cache' },
-    { id: 'section-12', shortTitle: '12. Troubleshooting', title: 'Section 12: Troubleshooting Guide & FAQ', icon: HelpCircle, keywords: 'troubleshooting faq distance validation negative values unsupported combinations empty results csv export sync tailpipe annualization' },
-    { id: 'section-routes', shortTitle: 'Route Index', title: 'Application Route & Dashboard Reference Directory', icon: Layers, keywords: 'routes / /calculator /results /comparison /survey /recommendations /methodology /user-manual controls outputs limitations' },
-  ];
-
-  const filteredSections = manualSections.filter((sec) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
-    return (
-      sec.title.toLowerCase().includes(q) ||
-      sec.keywords.toLowerCase().includes(q) ||
-      sec.shortTitle.toLowerCase().includes(q)
-    );
-  });
-
-  const isSectionVisible = (id) => {
-    if (!searchQuery.trim()) return true;
-    return filteredSections.some((s) => s.id === id);
   };
 
   return (
@@ -144,8 +163,8 @@ export default function UserManual() {
         </div>
 
         {/* Header Hero */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-6 sm:p-10 mb-8 shadow-md relative overflow-hidden border border-slate-700">
-          <div className="max-w-3xl space-y-3 relative z-10">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-6 sm:p-10 mb-8 shadow-md relative overflow-hidden border border-slate-700 w-full">
+          <div className="max-w-4xl space-y-3 relative z-10">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="emerald" size="sm" icon={BookOpen}>
                 Official Documentation & Help Center
@@ -158,17 +177,17 @@ export default function UserManual() {
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
               TerraTrace Drive User Manual
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-3xl">
               Complete, interactive operational reference manual for the TerraTrace Drive Vehicle Carbon Emission Calculator and Environmental Impact Analysis System.
               Learn how to operate each page, understand mathematical formulations, enter valid parameters, interpret real-time emissions analytics, and export research survey datasets.
             </p>
 
             {/* Live Search Bar */}
-            <div className="pt-3 print:hidden max-w-xl">
+            <div className="pt-3 print:hidden max-w-2xl w-full">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                 <input
@@ -206,77 +225,97 @@ export default function UserManual() {
         </div>
 
         {/* Main Grid: Sticky Sidebar TOC + Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left 3.5 Cols: Table of Contents Sidebar */}
-          <aside className="lg:col-span-3.5 print:hidden">
-            <div className="sticky top-22 space-y-4">
+        <div className="manual-layout grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)] gap-6 lg:gap-8 items-start w-full">
+          {/* Left Sidebar: Table of Contents */}
+          <aside className="manual-sidebar w-full min-w-0 print:hidden">
+            <div className="relative md:sticky md:top-22 space-y-4">
               <Card className="p-4 bg-white border-slate-200/90 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-emerald-600" />
-                    Table of Contents
-                  </h3>
-                  <span className="text-[10px] text-slate-400 font-semibold">{filteredSections.length} Sections</span>
-                </div>
-
-                <nav className="space-y-1 text-xs max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
-                  {filteredSections.length === 0 ? (
-                    <div className="py-4 text-center text-slate-500 space-y-1">
-                      <p>No matching sections.</p>
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="text-xs text-emerald-700 font-semibold underline cursor-pointer"
-                      >
-                        Reset search
-                      </button>
-                    </div>
-                  ) : (
-                    filteredSections.map((sec) => {
-                      const Icon = sec.icon;
-                      const isActive = activeSection === sec.id;
-                      return (
-                        <a
-                          key={sec.id}
-                          href={`#${sec.id}`}
-                          onClick={() => setActiveSection(sec.id)}
-                          className={`flex items-center gap-2 px-2.5 py-2 rounded-lg font-medium transition-colors ${
-                            isActive
-                              ? 'bg-emerald-50 text-emerald-800 font-bold border-l-2 border-emerald-600'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                          <span className="truncate">{sec.shortTitle}</span>
-                        </a>
-                      );
-                    })
-                  )}
-                </nav>
-
-                <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 text-[11px]">
+                <div className="border-b border-slate-100 pb-2.5">
                   <button
                     type="button"
-                    onClick={handlePrint}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold transition-colors cursor-pointer"
+                    onClick={() => setMobileTocOpen((prev) => !prev)}
+                    className="w-full flex items-center justify-between text-left cursor-pointer md:cursor-default"
+                    aria-expanded={mobileTocOpen}
+                    aria-label="Toggle Table of Contents"
                   >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Printable Reference</span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Table of Contents</span>
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-semibold">{filteredSections.length} Sections</span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 md:hidden ${
+                          mobileTocOpen ? 'rotate-180 text-emerald-600' : ''
+                        }`}
+                      />
+                    </div>
                   </button>
-                  <Link
-                    to="/calculator"
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors text-center"
-                  >
-                    <Calculator className="w-3.5 h-3.5" />
-                    <span>Open Calculator</span>
-                  </Link>
+                </div>
+
+                <div className={`${mobileTocOpen ? 'block' : 'hidden'} md:block space-y-3`}>
+                  <nav className="space-y-1 text-xs max-h-[60vh] md:max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                    {filteredSections.length === 0 ? (
+                      <div className="py-4 text-center text-slate-500 space-y-1">
+                        <p>No matching sections.</p>
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="text-xs text-emerald-700 font-semibold underline cursor-pointer"
+                        >
+                          Reset search
+                        </button>
+                      </div>
+                    ) : (
+                      filteredSections.map((sec) => {
+                        const Icon = sec.icon;
+                        const isActive = activeSection === sec.id;
+                        return (
+                          <a
+                            key={sec.id}
+                            href={`#${sec.id}`}
+                            onClick={() => {
+                              setActiveSection(sec.id);
+                              setMobileTocOpen(false);
+                            }}
+                            className={`flex items-start gap-2 px-2.5 py-2 rounded-lg font-medium transition-colors ${
+                              isActive
+                                ? 'bg-emerald-50 text-emerald-800 font-bold border-l-2 border-emerald-600'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 shrink-0 opacity-70 mt-0.5" />
+                            <span className="leading-snug break-words">{sec.shortTitle}</span>
+                          </a>
+                        );
+                      })
+                    )}
+                  </nav>
+
+                  <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                      <span>Printable Reference</span>
+                    </button>
+                    <Link
+                      to="/calculator"
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors text-center"
+                    >
+                      <Calculator className="w-3.5 h-3.5 shrink-0" />
+                      <span>Open Calculator</span>
+                    </Link>
+                  </div>
                 </div>
               </Card>
 
               {/* Quick Specs Quickcard */}
               <Card className="p-4 bg-emerald-950 text-white border-emerald-900 text-xs space-y-2.5">
                 <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
                   <span>Standard Fuel Factors</span>
                 </div>
                 <div className="space-y-1.5 font-mono text-[11px] text-slate-200">
@@ -304,8 +343,8 @@ export default function UserManual() {
             </div>
           </aside>
 
-          {/* Right 8.5 Cols: Comprehensive Manual Content Sections */}
-          <article className="lg:col-span-8.5 space-y-10 sm:space-y-14">
+          {/* Right Main Content Area */}
+          <article className="manual-content w-full min-w-0 space-y-10 sm:space-y-14">
             {searchQuery && (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
                 <span>Showing <strong>{filteredSections.length}</strong> matching sections for <strong>"{searchQuery}"</strong></span>
